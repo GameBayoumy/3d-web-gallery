@@ -19,6 +19,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 const gui = new dat.GUI({
     width: 400
 })
+const debugObject = {}
 
 // Canvas
 const canvas = document.querySelector('canvas.webgl')
@@ -27,10 +28,31 @@ const canvas = document.querySelector('canvas.webgl')
 const scene = new THREE.Scene()
 
 /**
+ * Update all materials
+ */
+ const updateAllMaterials = () =>
+ {
+     scene.traverse((child) =>
+     {
+         if(child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial)
+         {
+             // child.material.envMap = environmentMap
+             child.material.envMapIntensity = debugObject.envMapIntensity
+             child.material.needsUpdate = true
+             child.castShadow = true
+             child.receiveShadow = true
+         }
+     })
+ }
+
+/**
  * Loaders
  */
 // Texture loader
 const textureLoader = new THREE.TextureLoader()
+
+//Cube texture loader
+const cubeTextureLoader = new THREE.CubeTextureLoader()
 
 // Draco loader
 const dracoLoader = new DRACOLoader()
@@ -43,21 +65,26 @@ gltfLoader.setDRACOLoader(dracoLoader)
 /**
  * Textures
  */
-const bakedTexture = textureLoader.load('baked.jpg')
-bakedTexture.flipY = false
-bakedTexture.encoding = THREE.sRGBEncoding
+const environmentMap = cubeTextureLoader.load([
+    '/environmentMaps/1/px.jpg',
+    '/environmentMaps/1/nx.jpg',
+    '/environmentMaps/1/py.jpg',
+    '/environmentMaps/1/ny.jpg',
+    '/environmentMaps/1/pz.jpg',
+    '/environmentMaps/1/nz.jpg',
+])
+environmentMap.encoding = THREE.sRGBEncoding
+
+scene.background = environmentMap
+scene.environment = environmentMap
+
+debugObject.envMapIntensity = 2.5
+gui.add(debugObject, 'envMapIntensity').min(0).max(10).step(0.001).onChange(updateAllMaterials)
+
 
 /**
  * Materials
  */
-// Baked material
-const bakedMaterial = new THREE.MeshBasicMaterial({ map: bakedTexture })
-
-// Portal light material
-const portalLightMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff })
-
-// Pole light material
-const poleLightMaterial = new THREE.MeshBasicMaterial({ color: 0xffffe5 })
 
 /**
  * Model
@@ -83,9 +110,19 @@ const poleLightMaterial = new THREE.MeshBasicMaterial({ color: 0xffffe5 })
 gltfLoader.load(
     './gallery/gallery.gltf',
     (gltf) => {
-        // Apply materials tro imported mesh
+        const meshes = [...gltf.scene.children[0].children[0].children[0].children[0].children]
+        const materials = []
 
-        scene.add(gltf.scene)
+        gltf.scene.traverse(object => {
+            if(object.material)
+            materials.push(object.material)
+        })
+
+        meshes.forEach(mesh => {
+            scene.add(mesh)
+        })
+
+        updateAllMaterials()
     }
 )
 
@@ -117,9 +154,9 @@ window.addEventListener('resize', () =>
  */
 // Base camera
 const camera = new THREE.PerspectiveCamera(45, sizes.width / sizes.height, 0.1, 100)
-camera.position.x = 4
-camera.position.y = 2
-camera.position.z = 4
+camera.position.x = -1
+camera.position.y = 0
+camera.position.z = 0
 scene.add(camera)
 
 // Controls
@@ -133,9 +170,28 @@ const renderer = new THREE.WebGLRenderer({
     canvas: canvas,
     antialias: true
 })
+renderer.physicallyCorrectLights = true
+renderer.outputEncoding = THREE.sRGBEncoding
+renderer.toneMapping = THREE.ReinhardToneMapping
+renderer.toneMappingExposure = 2
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-renderer.outputEncoding = THREE.sRGBEncoding
+
+gui
+    .add(renderer, 'toneMapping', {
+        No: THREE.NoToneMapping,
+        Linear: THREE.LinearToneMapping,
+        Reinhard: THREE.ReinhardToneMapping,
+        Cineon: THREE.CineonToneMapping,
+        ACESFilmic: THREE.ACESFilmicToneMapping
+    })
+    .onFinishChange(() =>
+    {
+        renderer.toneMapping = Number(renderer.toneMapping)
+        updateAllMaterials()
+    })
+gui.add(renderer, 'toneMappingExposure').min(0).max(10).step(0.001)
+
 
 /**
  * Animate
