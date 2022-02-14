@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
+import { PointerLockControls } from './PointerLockControlsMobile'
 
 // /**
 //  * Spector JS
@@ -26,6 +27,9 @@ const canvas = document.querySelector('canvas.webgl')
 
 // Scene
 const scene = new THREE.Scene()
+
+// Pictures
+const picturePositions = []
 
 /**
  * Update all materials
@@ -81,7 +85,6 @@ scene.environment = environmentMap
 debugObject.envMapIntensity = 2.5
 gui.add(debugObject, 'envMapIntensity').min(0).max(10).step(0.001).onChange(updateAllMaterials)
 
-
 /**
  * Materials
  */
@@ -89,29 +92,13 @@ gui.add(debugObject, 'envMapIntensity').min(0).max(10).step(0.001).onChange(upda
 /**
  * Model
  */
-// gltfLoader.load(
-//     'portal.glb',
-//     (gltf) =>
-//     {
-//         const bakedMesh = gltf.scene.children.find(child => child.name === 'baked')
-//         const portalLightMesh = gltf.scene.children.find(child => child.name === 'portalLight')
-//         const poleLightAMesh = gltf.scene.children.find(child => child.name === 'poleLightA')
-//         const poleLightBMesh = gltf.scene.children.find(child => child.name === 'poleLightB')
-
-//         bakedMesh.material = bakedMaterial
-//         portalLightMesh.material = portalLightMaterial
-//         poleLightAMesh.material = poleLightMaterial
-//         poleLightBMesh.material = poleLightMaterial
-
-//         scene.add(gltf.scene)
-//     }
-// )
-
 gltfLoader.load(
     './gallery/gallery.gltf',
     (gltf) => {
         const meshes = [...gltf.scene.children[0].children[0].children[0].children[0].children]
         const materials = []
+
+        let center = new THREE.Vector3()
 
         gltf.scene.traverse(object => {
             if(object.material)
@@ -120,6 +107,12 @@ gltfLoader.load(
 
         meshes.forEach(mesh => {
             scene.add(mesh)
+            mesh.geometry.computeBoundingBox()
+
+            if(mesh.name.includes('picture') && !mesh.name.includes('pictureborder')){
+                mesh.geometry.boundingBox.getCenter(center)
+                picturePositions.push(mesh.localToWorld(center))
+            }
         })
 
         updateAllMaterials()
@@ -154,14 +147,40 @@ window.addEventListener('resize', () =>
  */
 // Base camera
 const camera = new THREE.PerspectiveCamera(45, sizes.width / sizes.height, 0.1, 100)
-camera.position.x = -1
-camera.position.y = 0
-camera.position.z = 0
+camera.position.y = -1
 scene.add(camera)
 
 // Controls
-const controls = new OrbitControls(camera, canvas)
-controls.enableDamping = true
+// const controls = new OrbitControls(camera, canvas)
+// controls.enableDamping = true
+// controls.enableZoom = false
+// controls.enablePan = false
+const controls = new PointerLockControls(camera, canvas)
+scene.add(controls.getObject())
+
+canvas.addEventListener( 'click', function () {
+    controls.lock()
+}, false )
+
+const onKeyDown = function ( event ) {
+    switch ( event.keyCode ) {
+        case 37: // left
+        case 65: // a
+            console.log('left')
+            camera.position.x -= 0.1
+            break;
+        case 39: // right
+        case 68: // d
+            console.log('right')
+            camera.position.x += 0.1
+            break;
+        case 32: // space
+            console.log('space')
+            break;
+
+    }
+}
+document.addEventListener( 'keydown', onKeyDown, false)
 
 /**
  * Renderer
@@ -173,7 +192,7 @@ const renderer = new THREE.WebGLRenderer({
 renderer.physicallyCorrectLights = true
 renderer.outputEncoding = THREE.sRGBEncoding
 renderer.toneMapping = THREE.ReinhardToneMapping
-renderer.toneMappingExposure = 2
+renderer.toneMappingExposure = 1.6
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
@@ -203,7 +222,7 @@ const tick = () =>
     const elapsedTime = clock.getElapsedTime()
 
     // Update controls
-    controls.update()
+    // controls.update()
 
     // Render
     renderer.render(scene, camera)
