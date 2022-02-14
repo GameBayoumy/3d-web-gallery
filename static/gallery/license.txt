@@ -1,0 +1,8 @@
+Model Information:
+* title:	VR Gallery for Product and Painting Showcase
+* source:	https://sketchfab.com/3d-models/vr-gallery-for-product-and-painting-showcase-c2b2e1f2e3574d93bd5d0257296c4c8b
+* author:	Leandro Nicolas (https://sketchfab.com/LeandroN)
+
+Model License:
+* license type:	SKETCHFAB Standard (https://sketchfab.com/licenses)
+* requirements:	Under basic restrictions, use worldwide, on all types of media, commercially or not, and in all types of derivative works
