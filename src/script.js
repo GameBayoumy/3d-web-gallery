@@ -35,6 +35,7 @@ const picturesPosNorm = new Set()
 // Mouse
 const pointer = new THREE.Vector2()
 const raycaster = new THREE.Raycaster()
+let isMoved = false
 
 /**
  * Update all materials
@@ -176,15 +177,7 @@ camera.position.y = -1
 scene.add(camera)
 
 // Controls
-// const controls = new OrbitControls(camera, canvas)
-// controls.enableDamping = true
-// controls.enableZoom = false
-// controls.enablePan = false
 const controls = new PointerLockControls(camera, canvas)
-
-/*
-         TODO: Apply delta for camera rotation change =======================
-*/
 scene.add(controls.getObject())
 
 window.addEventListener('click', () => {
@@ -195,11 +188,33 @@ window.addEventListener('click', () => {
     const intersects = raycaster.intersectObject(scene)
     if (intersects.length > 0)  {
 		intersects[0].object.material.color.set( 0xff0000 )
-        // camera.lookAt(intersects[0].object.position)
+        camera.lookAt(intersects[0].object.position)
 	}
 })
 
-window.addEventListener( 'keydown', onKeyDown, false)
+window.addEventListener('touchend', (event) => {
+
+    // If user has not dragged on the screen ray cast touch input
+    if(isMoved === false){
+        // Raycast from touch input
+        let {clientX, clientY} = event.changedTouches[0]
+        clientX = (clientX / window.innerWidth) * 2 - 1
+        clientY = -(clientY / window.innerHeight) * 2 + 1
+        const coords = new THREE.Vector2(clientX, clientY)
+    
+        raycaster.setFromCamera(coords, camera )
+        const intersects = raycaster.intersectObject(scene)
+        if (intersects.length > 0)  {
+            intersects[0].object.material.color.set( 0xff0000 )
+            camera.lookAt(intersects[0].object.position)
+        }
+    }
+
+    isMoved = false
+    // TODO: Update euler coords in pointer controls when camera.lookAt has been changed
+})
+
+window.addEventListener('keydown', onKeyDown, false)
 
 function onKeyDown(event){
     switch ( event.keyCode ) {
@@ -225,13 +240,10 @@ window.addEventListener('pointermove', onPointerMove )
 
 function onPointerMove(event){
     event.preventDefault()
-
+    isMoved = true
     pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1
     pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1
 }
-
-
-window.addEventListener( 'pointermove', onPointerMove )
 
 /**
  * Renderer
