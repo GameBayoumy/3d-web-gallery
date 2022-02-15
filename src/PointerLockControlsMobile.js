@@ -9,9 +9,9 @@ import {
 	var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent); 
 
 	var ww = document.body.clientWidth/2;
-	var wh = document.body.clientHeight/.2;
+	var wh = document.body.clientHeight/2;
 
-	var h = window.innerHeight;
+	var h = window.innerHeight/2;
 
 	var PointerLockControls = function ( camera, domElement ) {
 
@@ -32,6 +32,7 @@ import {
 		var unlockEvent = { type: 'unlock' };
 
 		var euler = new Euler( 0, 0, 0, 'YXZ' );
+		var lastEuler = new Euler()
 
 		var PI_2 = Math.PI / 2;
 		var PI_2y = Math.PI / 3.8;
@@ -45,35 +46,39 @@ import {
 		var lastxpos = 0;
 		var lastypos = 0;
 		
-		function onTouch(){
-		}	
+		function onTouch( e ){
+			clientX = e.touches[0].clientX
+  			clientY = e.touches[0].clientY
+			lastEuler.copy(euler)
+		}
+		
 		function onTouchMove( e ) {
-		  	clientY = e.touches[0].clientY;
-		  	clientX = e.touches[0].clientX;
-		  	xfromtouch = clientX-ww;
-			yfromtouch = clientY-(h-100) ;
-			euler.setFromQuaternion( camera.quaternion );
-			euler.y = xfromtouch * 0.005;
-			euler.x = yfromtouch * 0.005;
-			euler.x = Math.max( - PI_2, Math.min( PI_2_mobile, euler.x ) );
-			euler.y = Math.max( - PI_2y, Math.min( PI_2y, euler.y ) );
-			camera.quaternion.setFromEuler( euler );
-			scope.dispatchEvent( changeEvent );
-			console.log(yfromtouch);
-		};
+			let deltaX, deltaY			
+			deltaX = e.changedTouches[0].clientX - clientX
+  			deltaY = e.changedTouches[0].clientY - clientY
+
+			euler.setFromQuaternion( camera.quaternion )
+			euler.x = lastEuler.x + (deltaY * 0.001)
+			euler.y = lastEuler.y + (deltaX * 0.001)
+			// euler.x = Math.max( - PI_2, Math.min( PI_2_mobile, euler.x ) )
+			// euler.y = Math.max( - PI_2y, Math.min( PI_2y, euler.y ) )
+			camera.quaternion.setFromEuler( euler )
+			scope.dispatchEvent( changeEvent )
+		}
 		function onTouchEnd( e ) {
-		};
+		}
+
 		function onMouseMove( event ) {
 			if ( scope.isLocked === false ) return;
-			var movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
-			var movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
-			euler.setFromQuaternion( camera.quaternion );
-			euler.y -= movementX * 0.002;
-			euler.x -= movementY * 0.002;
+			var movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0
+			var movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0
+			euler.setFromQuaternion( camera.quaternion )
+			euler.y -= movementX * 0.005
+			euler.x -= movementY * 0.005
 			euler.x = Math.max( - PI_2, Math.min( PI_2, euler.x ) );
-			// euler.y = Math.max( - PI_2y, Math.min( PI_2y, euler.y ) );
-			camera.quaternion.setFromEuler( euler );
-			scope.dispatchEvent( changeEvent );
+			// euler.y = Math.max( - PI_2y, Math.min( PI_2y, euler.y ) )
+			camera.quaternion.setFromEuler( euler )
+			scope.dispatchEvent( changeEvent )
 		}
 
 		function onPointerlockChange() {
@@ -94,6 +99,7 @@ import {
 			document.addEventListener( 'mousemove', onMouseMove, false );
 			document.addEventListener( 'touchstart', onTouch, false );
 			document.addEventListener( 'touchmove', onTouchMove, false);
+			document.addEventListener( 'touchend', onTouchEnd, false)
 			document.addEventListener( 'pointerlockchange', onPointerlockChange, false );
 			document.addEventListener( 'pointerlockerror', onPointerlockError, false );
 		};

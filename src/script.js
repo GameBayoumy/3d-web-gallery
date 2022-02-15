@@ -5,6 +5,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { PointerLockControls } from './PointerLockControlsMobile'
+import { VertexNormalsHelper } from 'three/examples/jsm//helpers/VertexNormalsHelper'
 
 // /**
 //  * Spector JS
@@ -29,7 +30,11 @@ const canvas = document.querySelector('canvas.webgl')
 const scene = new THREE.Scene()
 
 // Pictures
-const picturePositions = []
+const picturesPosNorm = new Set()
+
+// Mouse
+const pointer = new THREE.Vector2()
+const raycaster = new THREE.Raycaster()
 
 /**
  * Update all materials
@@ -111,8 +116,29 @@ gltfLoader.load(
 
             if(mesh.name.includes('picture') && !mesh.name.includes('pictureborder')){
                 mesh.geometry.boundingBox.getCenter(center)
-                picturePositions.push(mesh.localToWorld(center))
+
+                const objNorm = mesh.geometry.attributes.normal
+                const normal = new THREE.Vector3()
+                const objWorldPos = new THREE.Vector3()
+                objWorldPos.copy(mesh.localToWorld(center))
+                
+                for( let i = 0; i < objNorm.count / 32; i++){
+                    normal.set(objNorm.getX(i), objNorm.getY(i), objNorm.getZ(i))
+                }
+                
+                picturesPosNorm.add({norm: normal, pos: objWorldPos})
             }
+        })
+
+        picturesPosNorm.forEach(picturePosNorm => {
+            const geometry = new THREE.BoxGeometry( 0.3, 0.3, 0.3 )
+            const material = new THREE.MeshBasicMaterial( {color: 0x00ff00} )
+            const cube = new THREE.Mesh( geometry, material )
+            const offset = new THREE.Vector3()
+
+            offset.addScaledVector(picturePosNorm.norm, 0.2)
+            cube.position.copy(picturePosNorm.pos).add(offset)
+            scene.add( cube )
         })
 
         updateAllMaterials()
@@ -127,8 +153,7 @@ const sizes = {
     height: window.innerHeight
 }
 
-window.addEventListener('resize', () =>
-{
+window.addEventListener('resize', () => {
     // Update sizes
     sizes.width = window.innerWidth
     sizes.height = window.innerHeight
@@ -156,13 +181,27 @@ scene.add(camera)
 // controls.enableZoom = false
 // controls.enablePan = false
 const controls = new PointerLockControls(camera, canvas)
+
+/*
+         TODO: Apply delta for camera rotation change =======================
+*/
 scene.add(controls.getObject())
 
-canvas.addEventListener( 'click', function () {
+window.addEventListener('click', () => {
     controls.lock()
-}, false )
+    
+    // Raycast from camera center
+    raycaster.setFromCamera({x: 0, y: 0}, camera )
+    const intersects = raycaster.intersectObject(scene)
+    if (intersects.length > 0)  {
+		intersects[0].object.material.color.set( 0xff0000 )
+        // camera.lookAt(intersects[0].object.position)
+	}
+})
 
-const onKeyDown = function ( event ) {
+window.addEventListener( 'keydown', onKeyDown, false)
+
+function onKeyDown(event){
     switch ( event.keyCode ) {
         case 37: // left
         case 65: // a
@@ -180,7 +219,19 @@ const onKeyDown = function ( event ) {
 
     }
 }
-document.addEventListener( 'keydown', onKeyDown, false)
+
+// Mouse
+window.addEventListener('pointermove', onPointerMove )
+
+function onPointerMove(event){
+    event.preventDefault()
+
+    pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1
+    pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1
+}
+
+
+window.addEventListener( 'pointermove', onPointerMove )
 
 /**
  * Renderer
