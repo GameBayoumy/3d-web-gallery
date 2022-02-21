@@ -1,11 +1,16 @@
 import './style.css'
 import * as dat from 'lil-gui'
 import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
+import gsap from 'gsap'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader'
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer'
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass'
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass'
+import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass'
+import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader'
 import { PointerLockControls } from './PointerLockControlsMobile'
-import { VertexNormalsHelper } from 'three/examples/jsm//helpers/VertexNormalsHelper'
+
 
 // /**
 //  * Spector JS
@@ -21,7 +26,13 @@ import { VertexNormalsHelper } from 'three/examples/jsm//helpers/VertexNormalsHe
 const gui = new dat.GUI({
     width: 400
 })
-const debugObject = {}
+const debugObject = {
+    envMapIntensity: 2.5,
+    edgeStrength: 1.5,
+    edgeGlow: 1,
+    edgeThickness: 1.8,
+    pulsePeriod: 5,
+}
 
 // Canvas
 const canvas = document.querySelector('canvas.webgl')
@@ -88,7 +99,6 @@ environmentMap.encoding = THREE.sRGBEncoding
 scene.background = environmentMap
 scene.environment = environmentMap
 
-debugObject.envMapIntensity = 2.5
 gui.add(debugObject, 'envMapIntensity').min(0).max(10).step(0.001).onChange(updateAllMaterials)
 
 /**
@@ -98,6 +108,7 @@ gui.add(debugObject, 'envMapIntensity').min(0).max(10).step(0.001).onChange(upda
 /**
  * Model
  */
+let artifacts = []
 gltfLoader.load(
     './gallery/gallery.gltf',
     (gltf) => {
@@ -139,6 +150,7 @@ gltfLoader.load(
 
             offset.addScaledVector(picturePosNorm.norm, 0.2)
             cube.position.copy(picturePosNorm.pos).add(offset)
+            artifacts.push(cube)
             scene.add( cube )
         })
 
@@ -166,6 +178,12 @@ window.addEventListener('resize', () => {
     // Update renderer
     renderer.setSize(sizes.width, sizes.height)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+
+    effectComposer.setSize(sizes.width, sizes.height)
+    effectComposer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+
+    fxaaPass.uniforms['resolution'].value.set( 1 / sizes.width, 1 / sizes.height )
+
 })
 
 /**
@@ -176,21 +194,46 @@ const camera = new THREE.PerspectiveCamera(45, sizes.width / sizes.height, 0.1, 
 camera.position.y = -1
 scene.add(camera)
 
-// Controls
+
+/**
+ * Events
+ */
 const controls = new PointerLockControls(camera, canvas)
 scene.add(controls.getObject())
 
-window.addEventListener('click', () => {
+// Cursor
+window.addEventListener('pointermove', onPointerMove )
+
+function onPointerMove(event){
+    event.preventDefault()
+    isMoved = true
+    pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1
+    pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1
+}
+
+canvas.addEventListener('click', (event) => {
     controls.lock()
     
     // Raycast from camera center
     raycaster.setFromCamera({x: 0, y: 0}, camera )
-    const intersects = raycaster.intersectObject(scene)
+    const intersects = raycaster.intersectObjects(artifacts)
     if (intersects.length > 0)  {
-		intersects[0].object.material.color.set( 0xff0000 )
-        camera.lookAt(intersects[0].object.position)
+        
+        gsap.to(camera.position, {
+            duration: 2,
+            x: intersects[0].object.position.x,
+        })
+        // camera.lookAt(intersects[0].object.position)
+        addSelectedObject(intersects[0].object)
 	}
 })
+
+let selectedObjects = []
+function addSelectedObject( object ) {
+    selectedObjects = []
+    selectedObjects.push( object )
+    outlinePass.selectedObjects = selectedObjects
+}
 
 window.addEventListener('touchend', (event) => {
 
@@ -203,15 +246,14 @@ window.addEventListener('touchend', (event) => {
         const coords = new THREE.Vector2(clientX, clientY)
     
         raycaster.setFromCamera(coords, camera )
-        const intersects = raycaster.intersectObject(scene)
+        const intersects = raycaster.intersectObjects(artifacts)
         if (intersects.length > 0)  {
-            intersects[0].object.material.color.set( 0xff0000 )
-            camera.lookAt(intersects[0].object.position)
+            // camera.lookAt(intersects[0].object.position)
+            addSelectedObject(intersects[0].object)
         }
     }
 
     isMoved = false
-    // TODO: Update euler coords in pointer controls when camera.lookAt has been changed
 })
 
 window.addEventListener('keydown', onKeyDown, false)
@@ -235,16 +277,6 @@ function onKeyDown(event){
     }
 }
 
-// Mouse
-window.addEventListener('pointermove', onPointerMove )
-
-function onPointerMove(event){
-    event.preventDefault()
-    isMoved = true
-    pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1
-    pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1
-}
-
 /**
  * Renderer
  */
@@ -255,7 +287,7 @@ const renderer = new THREE.WebGLRenderer({
 renderer.physicallyCorrectLights = true
 renderer.outputEncoding = THREE.sRGBEncoding
 renderer.toneMapping = THREE.ReinhardToneMapping
-renderer.toneMappingExposure = 1.6
+renderer.toneMappingExposure = 5
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
@@ -272,7 +304,37 @@ gui
         renderer.toneMapping = Number(renderer.toneMapping)
         updateAllMaterials()
     })
-gui.add(renderer, 'toneMappingExposure').min(0).max(10).step(0.001)
+gui.add(renderer, 'toneMappingExposure').min(3).max(10).step(0.001)
+
+// Post processing
+const effectComposer = new EffectComposer(renderer)
+
+const renderPass = new RenderPass(scene, camera)
+effectComposer.addPass(renderPass)
+
+const outlinePass = new OutlinePass( new THREE.Vector2(sizes.width, sizes.height), scene, camera)
+outlinePass.edgeStrength = 1.5
+outlinePass.edgeGlow = 1
+outlinePass.edgeThickness = 1.5
+outlinePass.pulsePeriod = 5
+effectComposer.addPass(outlinePass)
+
+const fxaaPass = new ShaderPass(FXAAShader)
+fxaaPass.uniforms['resolution'].value.set( 1 / sizes.width, 1 / sizes.height)
+effectComposer.addPass(fxaaPass)
+
+gui.add(debugObject, 'edgeStrength', 0.01, 10 ).onChange( function ( value ) {
+    outlinePass.edgeStrength = Number( value )
+})
+gui.add(debugObject, 'edgeGlow', 0.0, 1 ).onChange( function ( value ) {
+    outlinePass.edgeGlow = Number( value )
+})
+gui.add(debugObject, 'edgeThickness', 1, 4 ).onChange( function ( value ) {
+    outlinePass.edgeThickness = Number( value )
+})
+gui.add(debugObject, 'pulsePeriod', 0.0, 5 ).onChange( function ( value ) {
+    outlinePass.pulsePeriod = Number( value )
+})
 
 
 /**
@@ -288,7 +350,8 @@ const tick = () =>
     // controls.update()
 
     // Render
-    renderer.render(scene, camera)
+    // renderer.render(scene, camera)
+    effectComposer.render()
 
     // Call tick again on the next frame
     window.requestAnimationFrame(tick)
