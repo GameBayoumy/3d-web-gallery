@@ -49,6 +49,45 @@ const raycaster = new THREE.Raycaster()
 let isMoved = false
 
 /**
+ * Loading overlay
+ */
+ const overlayGeometry = new THREE.PlaneGeometry(2, 2, 1, 1)
+ const overlayMaterial = new THREE.ShaderMaterial({
+     transparent: true,
+     uniforms:
+     {
+         uAlpha: { value: 1 }
+     },
+     vertexShader: `
+     void main()
+     {
+         gl_Position = vec4(position, 1.0);
+     }
+     `,
+     fragmentShader: `
+        uniform float uAlpha;
+        void main()
+        {
+            gl_FragColor = vec4(0.0, 0.0, 0.0, uAlpha);
+        }
+     `
+ })
+ const overlay = new THREE.Mesh(overlayGeometry, overlayMaterial)
+ scene.add(overlay)
+
+// HTML Points
+const points = [
+    {
+        position: new THREE.Vector3(1.55, -1.1, -0.6),
+        element: document.querySelector('.point-0')
+    },
+    {
+        position: new THREE.Vector3(1.55, -1.1, -0.6),
+        element: document.querySelector('.point-1')
+    },
+]
+
+/**
  * Update all materials
  */
  const updateAllMaterials = () =>
@@ -69,18 +108,47 @@ let isMoved = false
 /**
  * Loaders
  */
+// Loading Manager
+const loadingBarElement = document.querySelector('.loading-bar')
+let sceneReady = false
+const loadingManager = new THREE.LoadingManager(
+    // Loaded
+    () => {
+        // Wait a little
+        window.setTimeout(() =>{
+            // Animate overlay
+            gsap.to(overlayMaterial.uniforms.uAlpha, { duration: 3, value: 0, delay: 1 })
+
+            // Update loading bar
+            loadingBarElement.classList.add('ended')
+            loadingBarElement.style.transform = ''
+        }, 500)
+
+        window.setTimeout(() => {
+            sceneReady = true
+        }, 2000)
+    },
+    // Progress
+    (itemUrl, itemsLoaded, itemsTotal) =>
+    {   
+        // Calculate loading progress and update loading bar element
+        const progressRatio = itemsLoaded / itemsTotal
+        loadingBarElement.style.transform = `scaleX(${progressRatio})`
+    } 
+)
+
 // Texture loader
-const textureLoader = new THREE.TextureLoader()
+const textureLoader = new THREE.TextureLoader(loadingManager)
 
 //Cube texture loader
-const cubeTextureLoader = new THREE.CubeTextureLoader()
+const cubeTextureLoader = new THREE.CubeTextureLoader(loadingManager)
 
 // Draco loader
-const dracoLoader = new DRACOLoader()
+const dracoLoader = new DRACOLoader(loadingManager)
 dracoLoader.setDecoderPath('draco/')
 
 // GLTF loader
-const gltfLoader = new GLTFLoader()
+const gltfLoader = new GLTFLoader(loadingManager)
 gltfLoader.setDRACOLoader(dracoLoader)
 
 /**
@@ -109,6 +177,7 @@ gui.add(debugObject, 'envMapIntensity').min(0).max(10).step(0.001).onChange(upda
  * Model
  */
 let artifacts = []
+let artifactObjects
 gltfLoader.load(
     './gallery/gallery.gltf',
     (gltf) => {
@@ -150,9 +219,12 @@ gltfLoader.load(
 
             offset.addScaledVector(picturePosNorm.norm, 0.2)
             cube.position.copy(picturePosNorm.pos).add(offset)
-            artifacts.push(cube)
+            artifacts.push({cube, points})
             scene.add( cube )
         })
+
+        // Seperate artifact objects out of object
+        artifactObjects = artifacts.map(({cube}) => cube)
 
         updateAllMaterials()
     }
@@ -216,15 +288,27 @@ canvas.addEventListener('click', (event) => {
     
     // Raycast from camera center
     raycaster.setFromCamera({x: 0, y: 0}, camera )
-    const intersects = raycaster.intersectObjects(artifacts)
+
+    const intersects = raycaster.intersectObjects(artifactObjects)
     if (intersects.length > 0)  {
+        let object = intersects[0].object
         
         gsap.to(camera.position, {
             duration: 2,
-            x: intersects[0].object.position.x,
+            x: object.position.x,
         })
-        // camera.lookAt(intersects[0].object.position)
-        addSelectedObject(intersects[0].object)
+        addSelectedObject(object)
+
+        // Temp: Uses coded positions for loaded artifacts for the HTML elements
+        points[0].position.copy(object.position)
+        let offset = new THREE.Vector3(0.15, 0.15, 0.2)
+        points[0].position.add(offset)
+        
+        points[1].position.copy(object.position)
+        offset = new THREE.Vector3(-0.15, 0, 0.2)
+        points[1].position.add(offset)
+
+        
 	}
 })
 
@@ -246,7 +330,7 @@ window.addEventListener('touchend', (event) => {
         const coords = new THREE.Vector2(clientX, clientY)
     
         raycaster.setFromCamera(coords, camera )
-        const intersects = raycaster.intersectObjects(artifacts)
+        const intersects = raycaster.intersectObjects(artifacts.object)
         if (intersects.length > 0)  {
             // camera.lookAt(intersects[0].object.position)
             addSelectedObject(intersects[0].object)
@@ -349,6 +433,20 @@ const tick = () =>
     // Update controls
     // controls.update()
 
+    // Go through each point
+    if(sceneReady && selectedObjects != null){
+        for(const point of points){
+            const screenPosition = point.position.clone()
+            screenPosition.project(camera)
+
+            const translateX = screenPosition.x * sizes.width * 0.5
+            const translateY = -screenPosition.y * sizes.height * 0.5
+            point.element.style.transform = `translateX(${translateX}px) translateY(${translateY}px)`
+            
+            point.element.classList.add('visible')
+        }
+    }
+    
     // Render
     // renderer.render(scene, camera)
     effectComposer.render()
