@@ -24,8 +24,9 @@ import { PointerLockControls } from './PointerLockControlsMobile'
  */
 // Debug
 const gui = new dat.GUI({
-    width: 400
+    width: 200
 })
+gui.hide()
 const debugObject = {
     envMapIntensity: 2.5,
     edgeStrength: 1.5,
@@ -284,6 +285,8 @@ function onPointerMove(event){
 }
 
 canvas.addEventListener('click', (event) => {
+    event.preventDefault()
+    
     controls.lock()
     
     // Raycast from camera center
@@ -330,10 +333,24 @@ window.addEventListener('touchend', (event) => {
         const coords = new THREE.Vector2(clientX, clientY)
     
         raycaster.setFromCamera(coords, camera )
-        const intersects = raycaster.intersectObjects(artifacts.object)
+        const intersects = raycaster.intersectObjects(artifactObjects)
         if (intersects.length > 0)  {
-            // camera.lookAt(intersects[0].object.position)
+            let object = intersects[0].object
+
+            gsap.to(camera.position, {
+                duration: 2,
+                x: object.position.x,
+            })
             addSelectedObject(intersects[0].object)
+
+            // Temp: Uses coded positions for loaded artifacts for the HTML elements
+            points[0].position.copy(object.position)
+            let offset = new THREE.Vector3(0.15, 0.15, 0.2)
+            points[0].position.add(offset)
+            
+            points[1].position.copy(object.position)
+            offset = new THREE.Vector3(-0.15, 0, 0.2)
+            points[1].position.add(offset)
         }
     }
 
@@ -405,19 +422,19 @@ effectComposer.addPass(outlinePass)
 
 const fxaaPass = new ShaderPass(FXAAShader)
 fxaaPass.uniforms['resolution'].value.set( 1 / sizes.width, 1 / sizes.height)
-effectComposer.addPass(fxaaPass)
+// effectComposer.addPass(fxaaPass)
 
-gui.add(debugObject, 'edgeStrength', 0.01, 10 ).onChange( function ( value ) {
-    outlinePass.edgeStrength = Number( value )
+gui.add(debugObject, 'edgeStrength', 0.01, 10 ).onChange((value) => {
+    outlinePass.edgeStrength = Number(value)
 })
-gui.add(debugObject, 'edgeGlow', 0.0, 1 ).onChange( function ( value ) {
-    outlinePass.edgeGlow = Number( value )
+gui.add(debugObject, 'edgeGlow', 0.0, 1 ).onChange((value) => {
+    outlinePass.edgeGlow = Number(value)
 })
-gui.add(debugObject, 'edgeThickness', 1, 4 ).onChange( function ( value ) {
-    outlinePass.edgeThickness = Number( value )
+gui.add(debugObject, 'edgeThickness', 1, 4 ).onChange((value) => {
+    outlinePass.edgeThickness = Number(value)
 })
-gui.add(debugObject, 'pulsePeriod', 0.0, 5 ).onChange( function ( value ) {
-    outlinePass.pulsePeriod = Number( value )
+gui.add(debugObject, 'pulsePeriod', 0.0, 5 ).onChange((value) => {
+    outlinePass.pulsePeriod = Number(value)
 })
 
 
@@ -443,6 +460,7 @@ const tick = () =>
             const translateY = -screenPosition.y * sizes.height * 0.5
             point.element.style.transform = `translateX(${translateX}px) translateY(${translateY}px)`
             
+            console.log(point)
             point.element.classList.add('visible')
         }
     }

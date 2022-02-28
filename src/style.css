@@ -18,6 +18,11 @@ body
     outline: none;
 }
 
+.lil-gui
+{
+    z-index: 2 !important; /* TODO Solve this in HTML */
+}
+
 .loading-bar
 {
     position: absolute;
@@ -88,6 +93,9 @@ body
     font-size: 14px;
     opacity: 0;
     transition: opacity 0.3s;
+    overflow: hidden;
+    text-overflow: clip;
+
     pointer-events: none;
 }
 
