@@ -6,9 +6,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass'
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass'
 import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass'
-import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader'
 import { PointerLockControls } from './PointerLockControlsMobile'
 
 
@@ -197,7 +195,7 @@ gui.add(debugObject, 'envMapIntensity').min(0).max(10).step(0.001).onChange(upda
  */
 
 /**
- * Model
+ * Models
  */
 let artifacts = []
 let artifactObjects
@@ -268,11 +266,7 @@ window.addEventListener('resize', () => {
 
     effectComposer.setSize(sizes.width, sizes.height)
     effectComposer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-
-    fxaaPass.uniforms['resolution'].value.set( 1 / sizes.width, 1 / sizes.height )
-
 })
-
 
 /**
  * Events
@@ -307,6 +301,7 @@ canvas.addEventListener('click', (event) => {
             x: object.position.x,
         })
 
+        // Iterate every artifact to match the interected object
         artifacts.forEach(artifact => {
             if(object === artifact.mesh){
                 // Update selected artifact
@@ -355,13 +350,13 @@ function addSelectedObject( object ) {
     let selectedMeshes = [object.mesh]
     outlinePass.selectedObjects = selectedMeshes
 
+    // Updates points make them visible
     object.points.forEach(point => {
         point.position.copy(object.mesh.position)
         point.position.add(point.pos_offset)
         
         point.element.classList.add('visible')
     })
-
 }
 
 window.addEventListener('keydown', onKeyDown, false)
@@ -378,7 +373,6 @@ function onKeyDown(event){
             break;
         case 32: // space
             break;
-
     }
 }
 
@@ -423,10 +417,6 @@ outlinePass.edgeGlow = 1
 outlinePass.edgeThickness = 1.5
 outlinePass.pulsePeriod = 5
 effectComposer.addPass(outlinePass)
-
-const fxaaPass = new ShaderPass(FXAAShader)
-fxaaPass.uniforms['resolution'].value.set( 1 / sizes.width, 1 / sizes.height)
-// effectComposer.addPass(fxaaPass)
 
 gui.add(debugObject, 'edgeStrength', 0.01, 10 ).onChange((value) => {
     outlinePass.edgeStrength = Number(value)
