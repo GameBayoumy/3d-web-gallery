@@ -24,6 +24,7 @@ import {
 
 		this.domElement = domElement;
 		this.isLocked = false;
+		this.isMobile = isMobile;
 
 		var scope = this;
 

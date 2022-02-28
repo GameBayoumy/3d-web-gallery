@@ -41,6 +41,20 @@ const canvas = document.querySelector('canvas.webgl')
 // Scene
 const scene = new THREE.Scene()
 
+// Sizes
+ const sizes = {
+    width: window.innerWidth,
+    height: window.innerHeight
+}
+
+/**
+ * Camera
+ */
+// Base camera
+const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
+camera.position.y = -1
+scene.add(camera)
+
 // Pictures
 const picturesPosNorm = new Set()
 
@@ -50,8 +64,9 @@ const raycaster = new THREE.Raycaster()
 let isMoved = false
 
 /**
- * Loading overlay
+ * UI
  */
+// Loading overlay
  const overlayGeometry = new THREE.PlaneGeometry(2, 2, 1, 1)
  const overlayMaterial = new THREE.ShaderMaterial({
      transparent: true,
@@ -91,6 +106,9 @@ const points = [
         element: document.querySelector('.point-1')
     },
 ]
+
+// Crosshair
+const crossHair = document.querySelector('.crosshair')
 
 /**
  * Update all materials
@@ -235,14 +253,6 @@ gltfLoader.load(
     }
 )
 
-/**
- * Sizes
- */
-const sizes = {
-    width: window.innerWidth,
-    height: window.innerHeight
-}
-
 window.addEventListener('resize', () => {
     // Update sizes
     sizes.width = window.innerWidth
@@ -262,14 +272,6 @@ window.addEventListener('resize', () => {
     fxaaPass.uniforms['resolution'].value.set( 1 / sizes.width, 1 / sizes.height )
 
 })
-
-/**
- * Camera
- */
-// Base camera
-const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.y = -1
-scene.add(camera)
 
 
 /**
@@ -368,16 +370,13 @@ function onKeyDown(event){
     switch ( event.keyCode ) {
         case 37: // left
         case 65: // a
-            console.log('left')
             camera.position.x -= 0.1
             break;
         case 39: // right
         case 68: // d
-            console.log('right')
             camera.position.x += 0.1
             break;
         case 32: // space
-            console.log('space')
             break;
 
     }
@@ -466,6 +465,10 @@ const tick = () =>
             point.element.style.transform = `translateX(${translateX}px) translateY(${translateY}px)`
         }
     }
+
+    // Update crosshair
+    if(controls.isLocked && controls.isMobile === false){ crossHair.classList.add('visible') }
+    else{ crossHair.classList.remove('visible') }
     
     // Render
     // renderer.render(scene, camera)

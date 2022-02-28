@@ -101,3 +101,18 @@ body
 {
     opacity: 1;
 }
+
+.crosshair
+{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    pointer-events: none;
+    opacity: 0;
+}
+
+.crosshair.visible
+{
+    opacity: 1;
+}
