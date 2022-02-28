@@ -267,7 +267,7 @@ window.addEventListener('resize', () => {
  * Camera
  */
 // Base camera
-const camera = new THREE.PerspectiveCamera(45, sizes.width / sizes.height, 0.1, 100)
+const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
 camera.position.y = -1
 scene.add(camera)
 
@@ -353,7 +353,7 @@ function addSelectedObject( object ) {
     let selectedMeshes = [object.mesh]
     outlinePass.selectedObjects = selectedMeshes
 
-    points.forEach(point => {
+    object.points.forEach(point => {
         point.position.copy(object.mesh.position)
         point.position.add(point.pos_offset)
         

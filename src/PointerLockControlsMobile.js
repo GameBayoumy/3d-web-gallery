@@ -58,8 +58,8 @@ import {
   			deltaY = e.changedTouches[0].clientY - clientY
 
 			euler.setFromQuaternion( camera.quaternion )
-			euler.x = lastEuler.x + (deltaY * 0.001)
-			euler.y = lastEuler.y + (deltaX * 0.001)
+			euler.x = lastEuler.x + (deltaY * 0.002)
+			euler.y = lastEuler.y + (deltaX * 0.002)
 			// euler.x = Math.max( - PI_2, Math.min( PI_2_mobile, euler.x ) )
 			// euler.y = Math.max( - PI_2y, Math.min( PI_2y, euler.y ) )
 			camera.quaternion.setFromEuler( euler )
@@ -73,8 +73,8 @@ import {
 			var movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0
 			var movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0
 			euler.setFromQuaternion( camera.quaternion )
-			euler.y -= movementX * 0.005
-			euler.x -= movementY * 0.005
+			euler.y -= movementX * 0.002
+			euler.x -= movementY * 0.002
 			euler.x = Math.max( - PI_2, Math.min( PI_2, euler.x ) );
 			// euler.y = Math.max( - PI_2y, Math.min( PI_2y, euler.y ) )
 			camera.quaternion.setFromEuler( euler )
