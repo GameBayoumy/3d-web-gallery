@@ -79,11 +79,13 @@ let isMoved = false
 // HTML Points
 const points = [
     {
-        position: new THREE.Vector3(1.55, -1.1, -0.6),
+        position: new THREE.Vector3(),
+        text: "Lorem ipsum, dolor sit amet consectetur adipisicing elit1",
         element: document.querySelector('.point-0')
     },
     {
-        position: new THREE.Vector3(1.55, -1.1, -0.6),
+        position: new THREE.Vector3(),
+        text: "Lorem ipsum, dolor sit amet consectetur adipisicing elit1",
         element: document.querySelector('.point-1')
     },
 ]
@@ -215,17 +217,17 @@ gltfLoader.load(
         picturesPosNorm.forEach(picturePosNorm => {
             const geometry = new THREE.BoxGeometry( 0.3, 0.3, 0.3 )
             const material = new THREE.MeshBasicMaterial( {color: 0x00ff00} )
-            const cube = new THREE.Mesh( geometry, material )
+            const mesh = new THREE.Mesh( geometry, material )
             const offset = new THREE.Vector3()
 
             offset.addScaledVector(picturePosNorm.norm, 0.2)
-            cube.position.copy(picturePosNorm.pos).add(offset)
-            artifacts.push({cube, points})
-            scene.add( cube )
+            mesh.position.copy(picturePosNorm.pos).add(offset)
+            artifacts.push({mesh, points})
+            scene.add( mesh )
         })
 
         // Seperate artifact objects out of object
-        artifactObjects = artifacts.map(({cube}) => cube)
+        artifactObjects = artifacts.map(({mesh}) => mesh)
 
         updateAllMaterials()
     }
@@ -300,9 +302,15 @@ canvas.addEventListener('click', (event) => {
             duration: 2,
             x: object.position.x,
         })
-        addSelectedObject(object)
+
 
         // Temp: Uses coded positions for loaded artifacts for the HTML elements
+        artifacts.forEach(artifact => {
+            if(object === artifact.mesh){
+                // Update selected artifact
+                addSelectedObject(artifact)
+            }
+        })
         points[0].position.copy(object.position)
         let offset = new THREE.Vector3(0.15, 0.15, 0.2)
         points[0].position.add(offset)
@@ -314,13 +322,6 @@ canvas.addEventListener('click', (event) => {
         
 	}
 })
-
-let selectedObjects = []
-function addSelectedObject( object ) {
-    selectedObjects = []
-    selectedObjects.push( object )
-    outlinePass.selectedObjects = selectedObjects
-}
 
 window.addEventListener('touchend', (event) => {
 
@@ -341,9 +342,14 @@ window.addEventListener('touchend', (event) => {
                 duration: 2,
                 x: object.position.x,
             })
-            addSelectedObject(intersects[0].object)
-
+            
             // Temp: Uses coded positions for loaded artifacts for the HTML elements
+            artifacts.forEach(artifact => {
+                if(object === artifact.mesh){
+                    // Update selected artifact
+                    addSelectedObject(artifact)
+                }
+            })
             points[0].position.copy(object.position)
             let offset = new THREE.Vector3(0.15, 0.15, 0.2)
             points[0].position.add(offset)
@@ -356,6 +362,13 @@ window.addEventListener('touchend', (event) => {
 
     isMoved = false
 })
+
+let selectedObjects = []
+function addSelectedObject( object ) {
+    selectedObjects = []
+    selectedObjects.push( object.mesh )
+    outlinePass.selectedObjects = selectedObjects
+}
 
 window.addEventListener('keydown', onKeyDown, false)
 
@@ -451,7 +464,7 @@ const tick = () =>
     // controls.update()
 
     // Go through each point
-    if(sceneReady && selectedObjects != null){
+    if(sceneReady && selectedObjects.length > 0){
         for(const point of points){
             const screenPosition = point.position.clone()
             screenPosition.project(camera)
@@ -459,8 +472,8 @@ const tick = () =>
             const translateX = screenPosition.x * sizes.width * 0.5
             const translateY = -screenPosition.y * sizes.height * 0.5
             point.element.style.transform = `translateX(${translateX}px) translateY(${translateY}px)`
+            point.element.classList
             
-            console.log(point)
             point.element.classList.add('visible')
         }
     }
