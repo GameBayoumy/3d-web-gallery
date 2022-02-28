@@ -80,11 +80,13 @@ let isMoved = false
 const points = [
     {
         position: new THREE.Vector3(),
+        pos_offset: new THREE.Vector3(0.15, 0.15, 0.2),
         text: "Lorem ipsum, dolor sit amet consectetur adipisicing elit1",
         element: document.querySelector('.point-0')
     },
     {
         position: new THREE.Vector3(),
+        pos_offset: new THREE.Vector3(-0.15, 0, 0.2),
         text: "Lorem ipsum, dolor sit amet consectetur adipisicing elit1",
         element: document.querySelector('.point-1')
     },
@@ -303,23 +305,12 @@ canvas.addEventListener('click', (event) => {
             x: object.position.x,
         })
 
-
-        // Temp: Uses coded positions for loaded artifacts for the HTML elements
         artifacts.forEach(artifact => {
             if(object === artifact.mesh){
                 // Update selected artifact
                 addSelectedObject(artifact)
             }
         })
-        points[0].position.copy(object.position)
-        let offset = new THREE.Vector3(0.15, 0.15, 0.2)
-        points[0].position.add(offset)
-        
-        points[1].position.copy(object.position)
-        offset = new THREE.Vector3(-0.15, 0, 0.2)
-        points[1].position.add(offset)
-
-        
 	}
 })
 
@@ -343,20 +334,12 @@ window.addEventListener('touchend', (event) => {
                 x: object.position.x,
             })
             
-            // Temp: Uses coded positions for loaded artifacts for the HTML elements
             artifacts.forEach(artifact => {
                 if(object === artifact.mesh){
                     // Update selected artifact
                     addSelectedObject(artifact)
                 }
             })
-            points[0].position.copy(object.position)
-            let offset = new THREE.Vector3(0.15, 0.15, 0.2)
-            points[0].position.add(offset)
-            
-            points[1].position.copy(object.position)
-            offset = new THREE.Vector3(-0.15, 0, 0.2)
-            points[1].position.add(offset)
         }
     }
 
@@ -366,8 +349,17 @@ window.addEventListener('touchend', (event) => {
 let selectedObjects = []
 function addSelectedObject( object ) {
     selectedObjects = []
-    selectedObjects.push( object.mesh )
-    outlinePass.selectedObjects = selectedObjects
+    selectedObjects.push( object )
+    let selectedMeshes = [object.mesh]
+    outlinePass.selectedObjects = selectedMeshes
+
+    points.forEach(point => {
+        point.position.copy(object.mesh.position)
+        point.position.add(point.pos_offset)
+        
+        point.element.classList.add('visible')
+    })
+
 }
 
 window.addEventListener('keydown', onKeyDown, false)
@@ -472,9 +464,6 @@ const tick = () =>
             const translateX = screenPosition.x * sizes.width * 0.5
             const translateY = -screenPosition.y * sizes.height * 0.5
             point.element.style.transform = `translateX(${translateX}px) translateY(${translateY}px)`
-            point.element.classList
-            
-            point.element.classList.add('visible')
         }
     }
     
