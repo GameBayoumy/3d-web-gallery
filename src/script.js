@@ -54,7 +54,7 @@ camera.position.y = -1
 scene.add(camera)
 
 // Pictures
-const picturesPosNorm = new Set()
+const picturesPosNorm = []
 
 // Mouse
 const pointer = new THREE.Vector2()
@@ -88,22 +88,6 @@ let isMoved = false
  })
  const overlay = new THREE.Mesh(overlayGeometry, overlayMaterial)
  scene.add(overlay)
-
-// HTML Points
-const points = [
-    {
-        position: new THREE.Vector3(),
-        pos_offset: new THREE.Vector3(0.15, 0.15, 0.2),
-        text: "Lorem ipsum, dolor sit amet consectetur adipisicing elit1",
-        element: document.querySelector('.point-0')
-    },
-    {
-        position: new THREE.Vector3(),
-        pos_offset: new THREE.Vector3(-0.15, 0, 0.2),
-        text: "Lorem ipsum, dolor sit amet consectetur adipisicing elit1",
-        element: document.querySelector('.point-1')
-    },
-]
 
 // Crosshair
 const crossHair = document.querySelector('.crosshair')
@@ -198,9 +182,9 @@ gui.add(debugObject, 'envMapIntensity').min(0).max(10).step(0.001).onChange(upda
  * Models
  */
 let artifacts = []
-let artifactObjects
+let artifactObjects = []
 gltfLoader.load(
-    './gallery/gallery.gltf',
+    './models/gallery/gallery.gltf',
     (gltf) => {
         const meshes = [...gltf.scene.children[0].children[0].children[0].children[0].children]
         const materials = []
@@ -228,28 +212,80 @@ gltfLoader.load(
                     normal.set(objNorm.getX(i), objNorm.getY(i), objNorm.getZ(i))
                 }
                 
-                picturesPosNorm.add({norm: normal, pos: objWorldPos})
+                picturesPosNorm.push({norm: normal, pos: objWorldPos})
             }
         })
 
-        picturesPosNorm.forEach(picturePosNorm => {
-            const geometry = new THREE.BoxGeometry( 0.3, 0.3, 0.3 )
-            const material = new THREE.MeshBasicMaterial( {color: 0x00ff00} )
-            const mesh = new THREE.Mesh( geometry, material )
-            const offset = new THREE.Vector3()
+        // picturesPosNorm.forEach(picturePosNorm => {
+        //     const geometry = new THREE.BoxGeometry( 0.3, 0.3, 0.3 )
+        //     const material = new THREE.MeshBasicMaterial( {color: 0x00ff00} )
+        //     const mesh = new THREE.Mesh( geometry, material )
+        //     const offset = new THREE.Vector3()
 
-            offset.addScaledVector(picturePosNorm.norm, 0.2)
-            mesh.position.copy(picturePosNorm.pos).add(offset)
-            artifacts.push({mesh, points})
-            scene.add( mesh )
-        })
+        //     offset.addScaledVector(picturePosNorm.norm, 0.2)
+        //     mesh.position.copy(picturePosNorm.pos).add(offset)
+        //     artifacts.push({mesh, points})
+        //     scene.add( mesh )
+        // })
 
         // Seperate artifact objects out of object
-        artifactObjects = artifacts.map(({mesh}) => mesh)
+        // artifactObjects = artifacts.map(({mesh}) => mesh)
 
         updateAllMaterials()
     }
 )
+
+// Load models and with points of interest from load_gallery.json file
+const loadGalleryData = require('./load_gallery.json')
+loadGalleryData.artifacts.forEach((artifactData) => {
+    gltfLoader.load(
+        `./models/${artifactData.model_path}/scene.gltf`,
+        (gltf) => {
+            const mesh = gltf.scene.children[0]
+
+            // Calculate bounding box for collision detection (ray cast)
+            mesh.traverse((mesh) => {
+                if(mesh instanceof THREE.Mesh){
+                    mesh.geometry.computeBoundingBox()
+                }
+            })
+
+            // Position mesh in front of painting index
+            const offset = new THREE.Vector3()
+            offset.addScaledVector(picturesPosNorm[artifactData.index].norm, 0.2)
+            mesh.position.copy(picturesPosNorm[artifactData.index].pos).add(offset)
+
+            // Create HTML elements with the data points
+            const points = [{}]
+            artifactData.points.forEach((pointData, index) => {
+                let div = document.createElement('div')
+                div.className = `point point-${index}`
+                let label, text 
+                label = document.createElement('div')
+                label.className = 'label'
+                text = document.createElement('div')
+                text.className = 'text'
+                text.textContent = pointData.text
+                div.appendChild(label)
+                div.appendChild(text)
+                document.body.appendChild(div)
+                const point = 
+                {
+                    position: new THREE.Vector3(),
+                    pos_offset: new THREE.Vector3().fromArray(pointData.pos_offset),
+                    text: pointData.text,
+                    element: document.querySelector(`.point-${index}`)
+                }
+                points.push(point)
+            })
+
+            artifacts.push({mesh, points})
+            artifactObjects.push(mesh)
+            scene.add(mesh)
+            
+        }
+    )
+})
 
 window.addEventListener('resize', () => {
     // Update sizes
@@ -293,6 +329,7 @@ canvas.addEventListener('click', (event) => {
     raycaster.setFromCamera({x: 0, y: 0}, camera )
 
     const intersects = raycaster.intersectObjects(artifactObjects)
+    console.log(artifactObjects)
     if (intersects.length > 0)  {
         let object = intersects[0].object
         

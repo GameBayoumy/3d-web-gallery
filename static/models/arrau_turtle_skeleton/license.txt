@@ -1,0 +1,11 @@
+Model Information:
+* title:	Arrau Turtle Skeleton (NHMW-Zoo-HS 1904)
+* source:	https://sketchfab.com/3d-models/arrau-turtle-skeleton-nhmw-zoo-hs-1904-eb70e34f13f94ce1a7aecec255af5828
+* author:	Natural History Museum Vienna (https://sketchfab.com/NHMWien)
+
+Model License:
+* license type:	CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/)
+* requirements:	Author must be credited. No commercial use.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Arrau Turtle Skeleton (NHMW-Zoo-HS 1904)" (https://sketchfab.com/3d-models/arrau-turtle-skeleton-nhmw-zoo-hs-1904-eb70e34f13f94ce1a7aecec255af5828) by Natural History Museum Vienna (https://sketchfab.com/NHMWien) licensed under CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/)
