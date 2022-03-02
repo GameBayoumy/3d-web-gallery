@@ -2,22 +2,22 @@
     "artifacts": [
         {
             "index" : 3,
-            "model_path": "arrau_turtle_skeleton",
+            "model_path": "arrau_turtle_skeleton/scene.glb",
             "points": [
                 {
-                    "pos_offset": [0.2, 0.12, 0],
+                    "pos_offset": [0.0, 0, 0.72],
                     "text": "Inside the shell the labels tied to the specimen are visible. Important information about the skeleton is written down on these labels."
                 },
                 {
-                    "pos_offset": [0.1, 0.3, 0],
+                    "pos_offset": [0.0, -0.2, 1.14],
                     "text": "The original skeleton stands upon a platform with a framework. Both have been cut out for this 3D model, but the colour of the iron frame is still visible."
                 },
                 {
-                    "pos_offset": [-0.1, 0.5, 0],
+                    "pos_offset": [0.0, -0.2, 0.44],
                     "text": "Another Arrau turtle specimen is Number 73 of the NHM Top 100. The 3D model of that specimen can be found here."
                 },
                 {
-                    "pos_offset": [0.13, 0.7, 0],
+                    "pos_offset": [0.0, 0.13, 0.13],
                     "text": "This specific skeleton is not visible in the exhibition of the museum. Nevertheless, there are many other turtle skeletons presented in a beautiful showcase in Hall 28."
                 }
             ]

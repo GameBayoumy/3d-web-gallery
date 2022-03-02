@@ -239,12 +239,12 @@ gltfLoader.load(
 const loadGalleryData = require('./load_gallery.json')
 loadGalleryData.artifacts.forEach((artifactData) => {
     gltfLoader.load(
-        `./models/${artifactData.model_path}/scene.gltf`,
+        `./models/${artifactData.model_path}`,
         (gltf) => {
-            const mesh = gltf.scene.children[0]
+            const object = gltf.scene.children[0]
 
             // Calculate bounding box for collision detection (ray cast)
-            mesh.traverse((mesh) => {
+            object.traverse((mesh) => {
                 if(mesh instanceof THREE.Mesh){
                     mesh.geometry.computeBoundingBox()
                 }
@@ -253,16 +253,25 @@ loadGalleryData.artifacts.forEach((artifactData) => {
             // Position mesh in front of painting index
             const offset = new THREE.Vector3()
             offset.addScaledVector(picturesPosNorm[artifactData.index].norm, 0.2)
-            mesh.position.copy(picturesPosNorm[artifactData.index].pos).add(offset)
+            object.position.copy(picturesPosNorm[artifactData.index].pos).add(offset)
+            
+            let mx = new THREE.Matrix4().lookAt(object.position, picturesPosNorm[artifactData.index].pos, object.up)
+            object.quaternion.setFromRotationMatrix(mx)
+
+            // Rotate loaded mesh to correct orientation
+            // const pictureArrow = new THREE.ArrowHelper(picturesPosNorm[artifactData.index].norm, picturesPosNorm[artifactData.index].pos, 1, 0xffff00)
+            // const objectArrow = new THREE.ArrowHelper(object.up, object.position, 1, 0xff0000)
+            // scene.add(pictureArrow, objectArrow)
 
             // Create HTML elements with the data points
-            const points = [{}]
+            const points = []
             artifactData.points.forEach((pointData, index) => {
                 let div = document.createElement('div')
                 div.className = `point point-${index}`
                 let label, text 
                 label = document.createElement('div')
                 label.className = 'label'
+                label.innerText = index + 1
                 text = document.createElement('div')
                 text.className = 'text'
                 text.textContent = pointData.text
@@ -279,10 +288,9 @@ loadGalleryData.artifacts.forEach((artifactData) => {
                 points.push(point)
             })
 
-            artifacts.push({mesh, points})
-            artifactObjects.push(mesh)
-            scene.add(mesh)
-            
+            artifactObjects.push(object)
+            artifacts.push({object, points})
+            scene.add(object)
         }
     )
 })
@@ -329,18 +337,16 @@ canvas.addEventListener('click', (event) => {
     raycaster.setFromCamera({x: 0, y: 0}, camera )
 
     const intersects = raycaster.intersectObjects(artifactObjects)
-    console.log(artifactObjects)
     if (intersects.length > 0)  {
-        let object = intersects[0].object
+        let object = intersects[0].object.parent.parent.parent.parent
         
         gsap.to(camera.position, {
             duration: 2,
             x: object.position.x,
         })
-
         // Iterate every artifact to match the interected object
         artifacts.forEach(artifact => {
-            if(object === artifact.mesh){
+            if(object === artifact.object){
                 // Update selected artifact
                 addSelectedObject(artifact)
             }
@@ -369,7 +375,7 @@ window.addEventListener('touchend', (event) => {
             })
             
             artifacts.forEach(artifact => {
-                if(object === artifact.mesh){
+                if(object === artifact.object){
                     // Update selected artifact
                     addSelectedObject(artifact)
                 }
@@ -381,15 +387,16 @@ window.addEventListener('touchend', (event) => {
 })
 
 let selectedObjects = []
-function addSelectedObject( object ) {
+function addSelectedObject( selected ) {
     selectedObjects = []
-    selectedObjects.push( object )
-    let selectedMeshes = [object.mesh]
+    selectedObjects.push(selected)
+    let selectedMeshes = [selected.object]
     outlinePass.selectedObjects = selectedMeshes
 
     // Updates points make them visible
-    object.points.forEach(point => {
-        point.position.copy(object.mesh.position)
+    console.log(selected.points)
+    selected.points.forEach(point => {
+        point.position.copy(selected.object.position)
         point.position.add(point.pos_offset)
         
         point.element.classList.add('visible')
@@ -483,7 +490,7 @@ const tick = () =>
 
     // Go through each point
     if(sceneReady && selectedObjects.length > 0){
-        for(const point of points){
+        for(const point of selectedObjects[0].points){
             const screenPosition = point.position.clone()
             screenPosition.project(camera)
 
