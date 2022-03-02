@@ -179,121 +179,116 @@ gui.add(debugObject, 'envMapIntensity').min(0).max(10).step(0.001).onChange(upda
  */
 
 /**
- * Models
+ * Gallery
  */
 let artifacts = []
 let artifactObjects = []
-gltfLoader.load(
-    './models/gallery/gallery.gltf',
-    (gltf) => {
-        const meshes = [...gltf.scene.children[0].children[0].children[0].children[0].children]
-        const materials = []
 
-        let center = new THREE.Vector3()
-
-        gltf.scene.traverse(object => {
-            if(object.material)
-            materials.push(object.material)
-        })
-
-        meshes.forEach(mesh => {
-            scene.add(mesh)
-            mesh.geometry.computeBoundingBox()
-
-            if(mesh.name.includes('picture') && !mesh.name.includes('pictureborder')){
-                mesh.geometry.boundingBox.getCenter(center)
-
-                const objNorm = mesh.geometry.attributes.normal
-                const normal = new THREE.Vector3()
-                const objWorldPos = new THREE.Vector3()
-                objWorldPos.copy(mesh.localToWorld(center))
-                
-                for( let i = 0; i < objNorm.count / 32; i++){
-                    normal.set(objNorm.getX(i), objNorm.getY(i), objNorm.getZ(i))
-                }
-                
-                picturesPosNorm.push({norm: normal, pos: objWorldPos})
-            }
-        })
-
-        // picturesPosNorm.forEach(picturePosNorm => {
-        //     const geometry = new THREE.BoxGeometry( 0.3, 0.3, 0.3 )
-        //     const material = new THREE.MeshBasicMaterial( {color: 0x00ff00} )
-        //     const mesh = new THREE.Mesh( geometry, material )
-        //     const offset = new THREE.Vector3()
-
-        //     offset.addScaledVector(picturePosNorm.norm, 0.2)
-        //     mesh.position.copy(picturePosNorm.pos).add(offset)
-        //     artifacts.push({mesh, points})
-        //     scene.add( mesh )
-        // })
-
-        // Seperate artifact objects out of object
-        // artifactObjects = artifacts.map(({mesh}) => mesh)
-
-        // updateAllMaterials()
-    }
-)
-
-// Load models and with points of interest from load_gallery.json file
-const loadGalleryData = require('./load_gallery.json')
-loadGalleryData.artifacts.forEach((artifactData) => {
+// Instantiate gallery room
+initGallery()
+function initGallery(){
     gltfLoader.load(
-        `./models/${artifactData.model_path}`,
+        './models/gallery/gallery.gltf',
         (gltf) => {
-            const object = gltf.scene.children[0]
-
-            // Calculate bounding box for collision detection (ray cast)
-            object.traverse((mesh) => {
-                if(mesh instanceof THREE.Mesh){
-                    mesh.geometry.computeBoundingBox()
+            const meshes = [...gltf.scene.children[0].children[0].children[0].children[0].children]
+            const materials = []
+    
+            let center = new THREE.Vector3()
+    
+            gltf.scene.traverse(object => {
+                if(object.material)
+                materials.push(object.material)
+            })
+    
+            meshes.forEach(mesh => {
+                scene.add(mesh)
+                mesh.geometry.computeBoundingBox()
+    
+                if(mesh.name.includes('picture') && !mesh.name.includes('pictureborder')){
+                    mesh.geometry.boundingBox.getCenter(center)
+    
+                    const objNorm = mesh.geometry.attributes.normal
+                    const normal = new THREE.Vector3()
+                    const objWorldPos = new THREE.Vector3()
+                    objWorldPos.copy(mesh.localToWorld(center))
+                    
+                    for( let i = 0; i < objNorm.count / 32; i++){
+                        normal.set(objNorm.getX(i), objNorm.getY(i), objNorm.getZ(i))
+                    }
+                    
+                    picturesPosNorm.push({norm: normal, pos: objWorldPos})
                 }
             })
-
-            // Position mesh in front of painting index
-            const offset = new THREE.Vector3()
-            offset.addScaledVector(picturesPosNorm[artifactData.index].norm, 0.2)
-            object.position.copy(picturesPosNorm[artifactData.index].pos).add(offset)
-            
-            let mx = new THREE.Matrix4().lookAt(object.position, picturesPosNorm[artifactData.index].pos, object.up)
-            object.quaternion.setFromRotationMatrix(mx)
-
-            // Rotate loaded mesh to correct orientation
-            // const pictureArrow = new THREE.ArrowHelper(picturesPosNorm[artifactData.index].norm, picturesPosNorm[artifactData.index].pos, 1, 0xffff00)
-            // const objectArrow = new THREE.ArrowHelper(object.up, object.position, 1, 0xff0000)
-            // scene.add(pictureArrow, objectArrow)
-
-            // Create HTML elements with the data points
-            const points = []
-            artifactData.points.forEach((pointData, index) => {
-                let div = document.createElement('div')
-                div.className = `point point-${index}`
-                let label, text 
-                label = document.createElement('div')
-                label.className = 'label'
-                label.innerText = index + 1
-                text = document.createElement('div')
-                text.className = 'text'
-                text.textContent = pointData.text
-                div.appendChild(label)
-                div.appendChild(text)
-                document.body.appendChild(div)
-                const point = 
-                {
-                    position: new THREE.Vector3(),
-                    pos_offset: new THREE.Vector3().fromArray(pointData.pos_offset),
-                    text: pointData.text,
-                    element: document.querySelector(`.point-${index}`)
-                }
-                points.push(point)
-            })
-
-            artifactObjects.push(object)
-            artifacts.push({object, points})
-            scene.add(object)
+    
+            // Load in gallery items when gallery room has been instantiated
+            loadGallery()
+    
+            // updateAllMaterials()
         }
     )
-})
+}
+
+// Load models and with points of interest from load_gallery.json file
+function loadGallery(){
+    const loadGalleryData = require('./load_gallery.json')
+    loadGalleryData.artifacts.forEach((artifactData) => {
+        gltfLoader.load(
+            `./models/${artifactData.model_path}`,
+            (gltf) => {
+                const object = gltf.scene.children[0]
+    
+                // Calculate bounding box for collision detection (ray cast)
+                object.traverse((mesh) => {
+                    if(mesh instanceof THREE.Mesh){
+                        mesh.geometry.computeBoundingBox()
+                    }
+                })
+    
+                // Position mesh in front of painting index
+                const offset = new THREE.Vector3()
+                offset.addScaledVector(picturesPosNorm[artifactData.index].norm, 0.2)
+                object.position.copy(picturesPosNorm[artifactData.index].pos).add(offset)
+                
+                let mx = new THREE.Matrix4().lookAt(object.position, picturesPosNorm[artifactData.index].pos, object.up)
+                object.quaternion.setFromRotationMatrix(mx)
+    
+                // Rotate loaded mesh to correct orientation
+                // const pictureArrow = new THREE.ArrowHelper(picturesPosNorm[artifactData.index].norm, picturesPosNorm[artifactData.index].pos, 1, 0xffff00)
+                // const objectArrow = new THREE.ArrowHelper(object.up, object.position, 1, 0xff0000)
+                // scene.add(pictureArrow, objectArrow)
+    
+                // Create HTML elements with the data points
+                const points = []
+                artifactData.points.forEach((pointData, index) => {
+                    let div = document.createElement('div')
+                    div.className = `point point-${index}`
+                    let label, text 
+                    label = document.createElement('div')
+                    label.className = 'label'
+                    label.innerText = index + 1
+                    text = document.createElement('div')
+                    text.className = 'text'
+                    text.textContent = pointData.text
+                    div.appendChild(label)
+                    div.appendChild(text)
+                    document.body.appendChild(div)
+                    const point = 
+                    {
+                        position: new THREE.Vector3(),
+                        pos_offset: new THREE.Vector3().fromArray(pointData.pos_offset),
+                        text: pointData.text,
+                        element: document.querySelector(`.point-${index}`)
+                    }
+                    points.push(point)
+                })
+    
+                artifactObjects.push(object)
+                artifacts.push({object, points})
+                scene.add(object)
+            }
+        )
+    })    
+}
 
 window.addEventListener('resize', () => {
     // Update sizes
@@ -319,14 +314,12 @@ const controls = new PointerLockControls(camera, canvas)
 scene.add(controls.getObject())
 
 // Cursor
-window.addEventListener('pointermove', onPointerMove )
-
-function onPointerMove(event){
+window.addEventListener('pointermove', (event) => {
     event.preventDefault()
     isMoved = true
     pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1
     pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1
-}
+})
 
 canvas.addEventListener('click', (event) => {
     event.preventDefault()
@@ -337,54 +330,49 @@ canvas.addEventListener('click', (event) => {
     raycaster.setFromCamera({x: 0, y: 0}, camera )
 
     const intersects = raycaster.intersectObjects(artifactObjects)
+    handleArtifactHit(intersects)
+})
+
+window.addEventListener('touchend', (event) => {
+    // If user has not dragged on the screen ray cast touch input
+    if(isMoved === false){
+        // Raycast from touch input
+        let {clientX, clientY} = event.changedTouches[0]
+        console.log(event)
+        clientX = (clientX / window.innerWidth) * 2 - 1
+        clientY = -(clientY / window.innerHeight) * 2 + 1
+        const coords = new THREE.Vector2(clientX, clientY)
+
+        // TODO: Fix coords on mobile 
+    
+        raycaster.setFromCamera(coords, camera )
+        const intersects = raycaster.intersectObjects(artifactObjects)
+        handleArtifactHit(intersects)
+    }
+
+    isMoved = false
+})
+
+function handleArtifactHit(intersects){
     if (intersects.length > 0)  {
         let object = intersects[0].object.parent.parent.parent.parent
-        
+
         gsap.to(camera.position, {
             duration: 2,
             x: object.position.x,
         })
-        // Iterate every artifact to match the interected object
+        
         artifacts.forEach(artifact => {
             if(object === artifact.object){
                 // Update selected artifact
                 addSelectedObject(artifact)
             }
         })
-	}
-})
-
-window.addEventListener('touchend', (event) => {
-
-    // If user has not dragged on the screen ray cast touch input
-    if(isMoved === false){
-        // Raycast from touch input
-        let {clientX, clientY} = event.changedTouches[0]
-        clientX = (clientX / window.innerWidth) * 2 - 1
-        clientY = -(clientY / window.innerHeight) * 2 + 1
-        const coords = new THREE.Vector2(clientX, clientY)
-    
-        raycaster.setFromCamera(coords, camera )
-        const intersects = raycaster.intersectObjects(artifactObjects)
-        if (intersects.length > 0)  {
-            let object = intersects[0].object
-
-            gsap.to(camera.position, {
-                duration: 2,
-                x: object.position.x,
-            })
-            
-            artifacts.forEach(artifact => {
-                if(object === artifact.object){
-                    // Update selected artifact
-                    addSelectedObject(artifact)
-                }
-            })
-        }
     }
-
-    isMoved = false
-})
+    else{ // If there are no intersects than the artifactsObjects
+        clearSelectedObject()
+    } 
+}
 
 let selectedObjects = []
 function addSelectedObject( selected ) {
@@ -394,13 +382,26 @@ function addSelectedObject( selected ) {
     outlinePass.selectedObjects = selectedMeshes
 
     // Updates points make them visible
-    console.log(selected.points)
     selected.points.forEach(point => {
         point.position.copy(selected.object.position)
         point.position.add(point.pos_offset)
         
         point.element.classList.add('visible')
     })
+}
+
+function clearSelectedObject(){
+    if(selectedObjects.length > 0){
+        console.log(selectedObjects)
+        // Hide html elements
+        selectedObjects[0].points.forEach(point => {
+            point.element.classList.remove('visible')
+        })
+        
+        // Clear outline pass and selected object
+        outlinePass.selectedObjects = []
+        selectedObjects = []
+    }
 }
 
 window.addEventListener('keydown', onKeyDown, false)
