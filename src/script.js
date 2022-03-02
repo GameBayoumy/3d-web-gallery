@@ -104,8 +104,8 @@ const crossHair = document.querySelector('.crosshair')
              // child.material.envMap = environmentMap
              child.material.envMapIntensity = debugObject.envMapIntensity
              child.material.needsUpdate = true
-             child.castShadow = true
-             child.receiveShadow = true
+            //  child.castShadow = true
+            //  child.receiveShadow = true
          }
      })
  }
@@ -231,7 +231,7 @@ gltfLoader.load(
         // Seperate artifact objects out of object
         // artifactObjects = artifacts.map(({mesh}) => mesh)
 
-        updateAllMaterials()
+        // updateAllMaterials()
     }
 )
 
