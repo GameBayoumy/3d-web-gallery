@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import gsap from 'gsap'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader'
+import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass'
 import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass'
@@ -52,6 +53,16 @@ const scene = new THREE.Scene()
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
 camera.position.y = -1
 scene.add(camera)
+
+/**
+ * Lights
+ */
+const ambientLight = new THREE.AmbientLight(0x404040, 5.0)
+scene.add(ambientLight)
+const directionalLight = new THREE.DirectionalLight(0xffffff, 2.5)
+directionalLight.rotateOnAxis(new THREE.Vector3(1, 1, 0), 45 * Math.PI / 45)
+const lightHelper = new THREE.DirectionalLightHelper(directionalLight, 5, new THREE.Color("yellow"))
+scene.add(directionalLight, lightHelper)
 
 // Pictures
 const picturesPosNorm = []
@@ -152,9 +163,14 @@ const cubeTextureLoader = new THREE.CubeTextureLoader(loadingManager)
 const dracoLoader = new DRACOLoader(loadingManager)
 dracoLoader.setDecoderPath('draco/')
 
+// KTX 2.0 loader
+const ktx2Loader = new KTX2Loader(loadingManager)
+ktx2Loader.setTranscoderPath('basis/')
+
 // GLTF loader
 const gltfLoader = new GLTFLoader(loadingManager)
 gltfLoader.setDRACOLoader(dracoLoader)
+gltfLoader.setKTX2Loader(ktx2Loader)
 
 /**
  * Textures
@@ -200,6 +216,7 @@ function initGallery(){
                 materials.push(object.material)
             })
     
+            // Find picture borders and save it's world position and normal direction
             meshes.forEach(mesh => {
                 scene.add(mesh)
                 mesh.geometry.computeBoundingBox()
@@ -290,6 +307,25 @@ function loadGallery(){
     })    
 }
 
+function loadModel(path, xPos){
+    gltfLoader.load(
+        path,
+        (gltf) => {
+            const mesh = gltf.scene
+
+            gltf.scene.traverse(object => {
+                if(object.material){
+                    object.material.normalMapType = THREE.ObjectSpaceNormalMap   
+                    object.material.flatShading = false    
+                }
+            })
+    
+            scene.add(mesh)
+            mesh.rotateOnAxis(new THREE.Vector3(0, 1, 0), 180 * Math.PI / 180)
+            mesh.position.set(xPos, -1.0, -0.2)
+        })
+}
+
 window.addEventListener('resize', () => {
     // Update sizes
     sizes.width = window.innerWidth
@@ -314,7 +350,7 @@ const controls = new PointerLockControls(camera, canvas)
 scene.add(controls.getObject())
 
 // Cursor
-window.addEventListener('pointermove', (event) => {
+canvas.addEventListener('pointermove', (event) => {
     event.preventDefault()
     isMoved = true
     pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1
@@ -322,7 +358,7 @@ window.addEventListener('pointermove', (event) => {
 })
 
 canvas.addEventListener('click', (event) => {
-    event.preventDefault()
+    event.stopPropagation()
     
     controls.lock()
     
@@ -333,12 +369,13 @@ canvas.addEventListener('click', (event) => {
     handleArtifactHit(intersects)
 })
 
-window.addEventListener('touchend', (event) => {
+canvas.addEventListener('touchend', (event) => {
+    event.stopPropagation()
+    
     // If user has not dragged on the screen ray cast touch input
     if(isMoved === false){
         // Raycast from touch input
         let {clientX, clientY} = event.changedTouches[0]
-        console.log(event)
         clientX = (clientX / window.innerWidth) * 2 - 1
         clientY = -(clientY / window.innerHeight) * 2 + 1
         const coords = new THREE.Vector2(clientX, clientY)
@@ -392,10 +429,12 @@ function addSelectedObject( selected ) {
 
 function clearSelectedObject(){
     if(selectedObjects.length > 0){
-        console.log(selectedObjects)
         // Hide html elements
         selectedObjects[0].points.forEach(point => {
             point.element.classList.remove('visible')
+
+            //Fix :hover not working when preventDefault is being used
+            // const fireEvent = (element, eventType="blur") => element && element.dispatchEvent(new Event(eventType))
         })
         
         // Clear outline pass and selected object
@@ -434,6 +473,9 @@ renderer.toneMapping = THREE.ReinhardToneMapping
 renderer.toneMappingExposure = 5
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+
+// Need to call this to make the GPU transcoder work
+ktx2Loader.detectSupport(renderer)
 
 gui
     .add(renderer, 'toneMapping', {
