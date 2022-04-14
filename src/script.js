@@ -9,6 +9,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass'
 import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass'
 import { PointerLockControls } from './PointerLockControlsMobile'
+import { DragControls } from 'three/examples/jsm/controls/DragControls'
 
 
 // /**
@@ -96,9 +97,33 @@ let isMoved = false
             gl_FragColor = vec4(0.0, 0.0, 0.0, uAlpha);
         }
      `
- })
- const overlay = new THREE.Mesh(overlayGeometry, overlayMaterial)
- scene.add(overlay)
+})
+const overlay = new THREE.Mesh(overlayGeometry, overlayMaterial)
+scene.add(overlay)
+
+// Point of interest label
+// const poiGeometry = new THREE.PlaneGeometry(0.2, 0.2, 1, 1)
+const poiGeometry = new THREE.SphereGeometry(0.1, 16, 16)
+const poiMaterial = new THREE.ShaderMaterial({
+    transparent: true,
+    uniforms:
+    {
+        uAlpha: { value: 1 }
+    },
+    vertexShader: `
+    void main()
+    {
+        gl_Position = vec4(position, 1.0);
+    }
+    `,
+    fragmentShader: `
+        uniform float uAlpha;
+        void main()
+        {
+            gl_FragColor = vec4(0.0, 0.0, 0.0, uAlpha);
+        }
+    `
+})
 
 // Crosshair
 const crossHair = document.querySelector('.crosshair')
@@ -106,20 +131,20 @@ const crossHair = document.querySelector('.crosshair')
 /**
  * Update all materials
  */
- const updateAllMaterials = () =>
- {
-     scene.traverse((child) =>
-     {
-         if(child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial)
-         {
-             // child.material.envMap = environmentMap
-             child.material.envMapIntensity = debugObject.envMapIntensity
-             child.material.needsUpdate = true
+const updateAllMaterials = () =>
+{
+    scene.traverse((child) =>
+    {
+        if(child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial)
+        {
+            // child.material.envMap = environmentMap
+            child.material.envMapIntensity = debugObject.envMapIntensity
+            child.material.needsUpdate = true
             //  child.castShadow = true
             //  child.receiveShadow = true
-         }
-     })
- }
+        }
+    })
+}
 
 /**
  * Loaders
@@ -212,8 +237,9 @@ function initGallery(){
             let center = new THREE.Vector3()
     
             gltf.scene.traverse(object => {
-                if(object.material)
-                materials.push(object.material)
+                if(object.material){ 
+                    materials.push(object.material)
+                }
             })
     
             // Find picture borders and save it's world position and normal direction
@@ -240,7 +266,7 @@ function initGallery(){
             // Load in gallery items when gallery room has been instantiated
             loadGallery()
     
-            // updateAllMaterials()
+            updateAllMaterials()
         }
     )
 }
@@ -259,23 +285,19 @@ function loadGallery(){
                     if(mesh instanceof THREE.Mesh){
                         mesh.geometry.computeBoundingBox()
                     }
+
+                    if(mesh.material instanceof THREE.MeshStandardMaterial){
+                        mesh.material.normalMapType = THREE.ObjectSpaceNormalMap
+                        mesh.material.flatShading = false  
+                    }
                 })
-    
-                // Position mesh in front of painting index
-                const offset = new THREE.Vector3()
-                offset.addScaledVector(picturesPosNorm[artifactData.index].norm, 0.2)
-                object.position.copy(picturesPosNorm[artifactData.index].pos).add(offset)
-                
-                let mx = new THREE.Matrix4().lookAt(object.position, picturesPosNorm[artifactData.index].pos, object.up)
-                object.quaternion.setFromRotationMatrix(mx)
-    
-                // Rotate loaded mesh to correct orientation
-                // const pictureArrow = new THREE.ArrowHelper(picturesPosNorm[artifactData.index].norm, picturesPosNorm[artifactData.index].pos, 1, 0xffff00)
-                // const objectArrow = new THREE.ArrowHelper(object.up, object.position, 1, 0xff0000)
-                // scene.add(pictureArrow, objectArrow)
-    
+
+
                 // Create HTML elements with the data points
+                // TODO: Change point HTML elements to ThreeJs objects to apply the text to any rotational changes of the mesh  
                 const points = []
+                const pointGroup = new THREE.Group()
+
                 artifactData.points.forEach((pointData, index) => {
                     let div = document.createElement('div')
                     div.className = `point point-${index}`
@@ -297,11 +319,30 @@ function loadGallery(){
                         element: document.querySelector(`.point-${index}`)
                     }
                     points.push(point)
+
+                    const poi = new THREE.Mesh(poiGeometry, new THREE.MeshBasicMaterial({color:"red"}))
+                    poi.position.fromArray(pointData.pos_offset)
+                    // object.add(poi)
                 })
+
+
+                // Position mesh in front of painting index
+                const offset = new THREE.Vector3()
+                offset.addScaledVector(picturesPosNorm[artifactData.index].norm, 0.2)
+                object.position.copy(picturesPosNorm[artifactData.index].pos).add(offset)
+                
+                // Rotate loaded mesh to correct orientation
+                let mx = new THREE.Matrix4().lookAt(object.position, picturesPosNorm[artifactData.index].pos, object.up)
+                object.quaternion.setFromRotationMatrix(mx)
+
+                // TEMP TRANSFORM FOR TESTING
+                object.rotateOnAxis(new THREE.Vector3(0, 1, 0), 180 * Math.PI / 180)
+                object.position.setY(-1.5)
+
+                scene.add(object)
     
                 artifactObjects.push(object)
                 artifacts.push({object, points})
-                scene.add(object)
             }
         )
     })    
@@ -325,6 +366,12 @@ function loadModel(path, xPos){
             mesh.position.set(xPos, -1.0, -0.2)
         })
 }
+// loadModel('./models/gnome_3dscan/1k/Scan_comp2.glb', -0.25) // UASTC + ETC1S 1k
+// loadModel('./models/gnome_3dscan/2k/Scan_comp2.glb', 0.25) // UASTC + ETC1S 2k
+// loadModel('./models/gnome_3dscan/2k/Scan_comp3.glb', 0.25) // UASTC 2k
+// loadModel('./models/gnome_3dscan/4k/Scan_comp2.glb', 0.5) // UASTC + ETC1S 4k
+// loadModel('./models/gnome_3dscan/8k/Scan_comp2.glb', 0.75) // UASTC + ETC1S 8k
+// loadModel('./models/mouse/Mouse_Low_Compressed2.glb', 1.5)
 
 window.addEventListener('resize', () => {
     // Update sizes
@@ -346,8 +393,18 @@ window.addEventListener('resize', () => {
 /**
  * Events
  */
+// Controls
 const controls = new PointerLockControls(camera, canvas)
 scene.add(controls.getObject())
+// const dragControls = new DragControls(artifactObjects, camera, canvas)
+
+// dragControls.addEventListener('dragstart', (event) => {
+//     console.log(event)
+// })
+
+// dragControls.addEventListener('dragend', (event) => {
+//     console.log(event)
+// })
 
 // Cursor
 canvas.addEventListener('pointermove', (event) => {
@@ -360,7 +417,7 @@ canvas.addEventListener('pointermove', (event) => {
 canvas.addEventListener('click', (event) => {
     event.stopPropagation()
     
-    controls.lock()
+    // controls.lock()
     
     // Raycast from camera center
     raycaster.setFromCamera({x: 0, y: 0}, camera )
@@ -392,7 +449,7 @@ canvas.addEventListener('touchend', (event) => {
 
 function handleArtifactHit(intersects){
     if (intersects.length > 0)  {
-        let object = intersects[0].object.parent.parent.parent.parent
+        let object = intersects[0].object
 
         gsap.to(camera.position, {
             duration: 2,
@@ -544,8 +601,8 @@ const tick = () =>
     }
 
     // Update crosshair
-    if(controls.isLocked && controls.isMobile === false){ crossHair.classList.add('visible') }
-    else{ crossHair.classList.remove('visible') }
+    // if(controls.isLocked && controls.isMobile === false){ crossHair.classList.add('visible') }
+    // else{ crossHair.classList.remove('visible') }
     
     // Render
     // renderer.render(scene, camera)
