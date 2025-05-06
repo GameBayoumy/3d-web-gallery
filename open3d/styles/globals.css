@@ -1,0 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+iframe#api-frame {
+  height: calc(100vh - 150px);
+}

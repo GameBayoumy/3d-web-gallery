@@ -3,7 +3,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "webpack --config ./bundler/webpack.prod.js",
-    "dev": "webpack serve --config ./bundler/webpack.dev.js",
+    "dev": "next dev",
     "deploy": "vercel --prod"
   },
   "dependencies": {
@@ -20,8 +20,11 @@
     "ip": "^1.1.5",
     "lil-gui": "^0.16.0",
     "mini-css-extract-plugin": "^2.5.3",
+    "next": "^12.1.5",
     "portfinder-sync": "0.0.2",
     "raw-loader": "^4.0.2",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
     "spectorjs": "^0.9.27",
     "style-loader": "^3.3.1",
     "three": "^0.137.5",
